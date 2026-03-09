@@ -1,15 +1,10 @@
-// api/humanize.js
-// This runs on Vercel's server — users never see this file or your API key
-
 export default async function handler(req, res) {
-  // Only allow POST requests
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { text } = req.body;
 
-  // Basic validation
   if (!text || text.trim().length === 0) {
     return res.status(400).json({ error: "No text provided" });
   }
@@ -23,53 +18,41 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`, // stored safely in Vercel
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",// free and powerful model
-        max_tokens: 1000,
+        model: "llama-3.3-70b-versatile",
+        max_tokens: 1500,
         temperature: 0.7,
         messages: [
           {
             role: "system",
-            content: `You are a ruthless AI writing editor. Your job: make AI-generated text sound like it was written by an actual human.
+            content: `You are an AI writing editor. Rewrite AI-generated text to sound human.
 
-You know every AI tell:
-- Significance inflation ("pivotal moment", "testament to", "evolving landscape")
-- Promotional fluff ("vibrant", "groundbreaking", "nestled", "breathtaking")
-- Superficial -ing phrases ("highlighting", "underscoring", "showcasing")
-- Vague attributions ("experts argue", "observers note", "industry reports")
-- Soulless structure (rule of three, "not just X but Y", "catalyst/partner/foundation")
-- Chatbot artifacts ("Great question!", "I hope this helps!", "Let me know if...")
-- Generic conclusions ("the future looks bright", "exciting times lie ahead")
-- Filler phrases ("In order to", "It is important to note that", "At this point in time")
-- Excessive hedging ("could potentially possibly be argued")
-- Copula avoidance ("serves as", "functions as", "stands as" use "is")
-- Em dash overuse, curly quotes, emoji bullet points
-- Every sentence same length and structure
+Remove these patterns:
+- Significance inflation: "pivotal moment", "testament to", "evolving landscape"
+- Fluff words: "vibrant", "groundbreaking", "nestled", "breathtaking"
+- Fake depth: "-ing" phrases like "highlighting", "underscoring", "showcasing"
+- Vague sources: "experts argue", "observers note", "industry reports"
+- Chatbot phrases: "Great question!", "I hope this helps!", "Let me know if..."
+- Weak endings: "the future looks bright", "exciting times lie ahead"
+- Filler: "In order to", "It is important to note that"
+- Use "is" instead of "serves as", "functions as", "stands as"
 
-Your rewrite rules:
-1. Cut the fluff. Be direct. Use "is" not "serves as".
-2. Add personality. React to things. Have opinions where appropriate.
-3. Vary rhythm. Short punchy sentences. Then longer ones.
-4. Be specific. Replace vague claims with concrete details.
-5. Let some mess in. Perfect structure feels algorithmic.
+Rules for rewriting:
+1. Be direct and specific
+2. Vary sentence length - mix short and long
+3. Add personality and opinions where natural
+4. Use simple words over complex ones
 
-IMPORTANT: Respond with ONLY valid JSON. No markdown. No backticks. No explanation. Just the JSON object.
+You MUST respond with ONLY a raw JSON object. No markdown. No backticks. No explanation before or after. Start your response with { and end with }
 
-{
-  "humanized": "the rewritten text here",
-  "changes": ["change description 1", "change description 2", "change description 3"],
-  "score_before": 85,
-  "score_after": 12
-}
-
-score_before and score_after are AI-ness scores from 0 (pure human) to 100 (pure AI slop).
-Keep changes list to 4-6 bullets. Be specific and punchy.`
+Example response format:
+{"humanized":"rewritten text goes here","changes":["removed fluff word X","replaced serves as with is","cut generic conclusion"],"score_before":82,"score_after":15}`
           },
           {
             role: "user",
-            content: `Humanize this text:\n\n${text}`
+            content: `Humanize this text and respond with only JSON:\n\n${text}`
           }
         ]
       })
@@ -83,10 +66,40 @@ Keep changes list to 4-6 bullets. Be specific and punchy.`
 
     const data = await response.json();
     const raw = data.choices?.[0]?.message?.content || "";
-    const clean = raw.replace(/```json|```/g, "").trim();
+
+    // Clean up the response aggressively
+    let clean = raw.trim();
+
+    // Remove markdown code blocks if present
+    clean = clean.replace(/^```json\s*/i, "");
+    clean = clean.replace(/^```\s*/i, "");
+    clean = clean.replace(/\s*```$/i, "");
+    clean = clean.trim();
+
+    // Find the first { and last } to extract just the JSON
+    const firstBrace = clean.indexOf("{");
+    const lastBrace = clean.lastIndexOf("}");
+
+    if (firstBrace === -1 || lastBrace === -1) {
+      console.error("No JSON found in response:", clean);
+      return res.status(500).json({ error: "Could not parse response. Try again." });
+    }
+
+    clean = clean.substring(firstBrace, lastBrace + 1);
+
     const parsed = JSON.parse(clean);
 
-    return res.status(200).json(parsed);
+    // Make sure required fields exist
+    if (!parsed.humanized) {
+      return res.status(500).json({ error: "Invalid response format. Try again." });
+    }
+
+    return res.status(200).json({
+      humanized: parsed.humanized,
+      changes: parsed.changes || ["Removed AI patterns", "Improved readability"],
+      score_before: parsed.score_before || 75,
+      score_after: parsed.score_after || 20,
+    });
 
   } catch (error) {
     console.error("Server error:", error);
