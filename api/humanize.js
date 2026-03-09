@@ -26,7 +26,7 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`, // stored safely in Vercel
       },
       body: JSON.stringify({
-        model: "llama3-70b-8192", // free and powerful model
+        model: "llama-3.3-70b-versatile",// free and powerful model
         max_tokens: 1000,
         temperature: 0.7,
         messages: [
