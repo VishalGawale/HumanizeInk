@@ -4,10 +4,10 @@ import { ClerkProvider } from '@clerk/react'
 import App from './App.jsx'
 
 // Get publishable key from environment
-const PUBLISHABLE_KEY = import.meta.env.CLERK_PUBLISHABLE_KEY
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Clerk Publishable Key — add CLERK_PUBLISHABLE_KEY to Vercel environment variables")
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in environment variables")
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
