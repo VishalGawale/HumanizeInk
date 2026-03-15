@@ -1,15 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
-import {
-  useUser,
-  useClerk,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from "@clerk/clerk-react";
 
 // ─── LIMITS ───────────────────────────────────────────────
 const GUEST_LIMIT = 3;
-const FREE_LIMIT = 20;
 const STORAGE_KEY = "hum_usage";
 
 function getTodayKey() {
@@ -60,7 +52,7 @@ const AIScore = ({ score, label }) => {
 };
 
 // ─── SIGNUP POPUP ─────────────────────────────────────────
-const SignupPopup = ({ onClose, openSignIn, openSignUp }) => (
+const SignupPopup = ({ onClose }) => (
   <div style={{
     position: "fixed", inset: 0, zIndex: 1000,
     background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)",
@@ -82,44 +74,42 @@ const SignupPopup = ({ onClose, openSignIn, openSignUp }) => (
         You've used your free quota
       </h2>
       <p style={{ color: "#9ca3af", fontSize: "14px", lineHeight: "1.6", marginBottom: "28px" }}>
-        Sign up free and get <span style={{ color: "#a78bfa", fontWeight: "600" }}>20 humanizations per day</span> — no credit card needed.
+        You've used your <span style={{ color: "#a78bfa", fontWeight: "600" }}>3 free daily uses</span>. Come back tomorrow for more — completely free, no account needed.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "28px", textAlign: "left" }}>
-        {["20 free uses every day", "Save your humanization history", "Priority processing", "Early access to new features"].map((perk, i) => (
+        {[
+          "3 free uses every day — no signup",
+          "No credit card ever required",
+          "Explains every change it makes",
+          "AI score before and after",
+        ].map((perk, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#14532d", border: "1px solid #4ade8044", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", flexShrink: 0 }}>✓</div>
             <span style={{ fontSize: "13px", color: "#d1d5db" }}>{perk}</span>
           </div>
         ))}
       </div>
-      <button onClick={openSignUp} style={{
+      <button onClick={onClose} style={{
         width: "100%", padding: "13px", borderRadius: "8px",
         background: "#7c3aed", border: "none", color: "#fff",
         fontSize: "15px", fontWeight: "600", cursor: "pointer",
-        marginBottom: "10px", fontFamily: "'DM Sans', system-ui",
+        fontFamily: "'DM Sans', system-ui",
       }}>
-        Create Free Account
-      </button>
-      <button onClick={openSignIn} style={{
-        width: "100%", padding: "12px", borderRadius: "8px",
-        background: "transparent", border: "1px solid #374151", color: "#9ca3af",
-        fontSize: "14px", cursor: "pointer", fontFamily: "'DM Sans', system-ui",
-      }}>
-        Already have an account? Sign in
+        OK, come back tomorrow
       </button>
       <button onClick={onClose} style={{
         marginTop: "16px", background: "none", border: "none",
         color: "#4b5563", fontSize: "12px", cursor: "pointer",
         fontFamily: "'DM Mono', monospace",
       }}>
-        maybe later ×
+        close ×
       </button>
     </div>
   </div>
 );
 
 // ─── USAGE BADGE ──────────────────────────────────────────
-const UsageBadge = ({ used, limit, isSignedIn }) => {
+const UsageBadge = ({ used, limit }) => {
   const remaining = limit - used;
   const isLow = remaining <= 1;
   return (
@@ -136,18 +126,14 @@ const UsageBadge = ({ used, limit, isSignedIn }) => {
         boxShadow: isLow ? "0 0 6px #f87171" : "0 0 6px #4ade80",
       }} />
       <span style={{ color: isLow ? "#fca5a5" : "#9ca3af" }}>
-        {remaining <= 0 ? "No uses left" : `${remaining} use${remaining !== 1 ? "s" : ""} left`}
+        {remaining <= 0 ? "No uses left today" : `${remaining} use${remaining !== 1 ? "s" : ""} left today`}
       </span>
-      {!isSignedIn && remaining > 0 && <span style={{ color: "#4b5563" }}>· guest</span>}
     </div>
   );
 };
 
 // ─── MAIN APP ─────────────────────────────────────────────
 export default function App() {
-  const { isSignedIn } = useUser();
-  const { openSignIn, openSignUp } = useClerk();
-
   const [input, setText] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -157,9 +143,9 @@ export default function App() {
   const [usage, setUsage] = useState(getUsage);
   const [mode, setMode] = useState("standard");
 
-  useEffect(() => { setUsage(getUsage()); }, [isSignedIn]);
+  useEffect(() => { setUsage(getUsage()); }, []);
 
-  const limit = isSignedIn ? FREE_LIMIT : GUEST_LIMIT;
+  const limit = GUEST_LIMIT;
   const usedToday = usage.count;
   const hasReachedLimit = usedToday >= limit;
 
@@ -182,7 +168,7 @@ export default function App() {
       const newCount = incrementUsage();
       setUsage({ date: getTodayKey(), count: newCount });
       setResult(data);
-      if (!isSignedIn && newCount >= GUEST_LIMIT) {
+      if (newCount >= GUEST_LIMIT) {
         setTimeout(() => setShowPopup(true), 1500);
       }
     } catch (err) {
@@ -190,7 +176,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, hasReachedLimit, isSignedIn, mode]);
+  }, [input, loading, hasReachedLimit, mode]);
 
   const copyOutput = () => {
     if (result?.humanized) {
@@ -238,14 +224,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
             <span style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "-0.02em" }}>humanizer<span style={{ color: "#7c3aed" }}>.ink</span></span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <UsageBadge used={usedToday} limit={limit} isSignedIn={isSignedIn} />
-            <SignedOut>
-              <button onClick={() => openSignIn()} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "7px 14px", color: "#9ca3af", fontSize: "13px", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign in</button>
-              <button onClick={() => openSignUp()} style={{ background: "#7c3aed", border: "none", borderRadius: "7px", padding: "7px 14px", color: "#fff", fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign up free</button>
-            </SignedOut>
-            <SignedIn>
-              <UserButton afterSignOutUrl="/" />
-            </SignedIn>
+            <UsageBadge used={usedToday} limit={limit} />
           </div>
         </div>
       </nav>
@@ -306,7 +285,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
                 fontSize: "14px", fontWeight: "600", transition: "all 0.2s",
                 display: "flex", alignItems: "center", gap: "8px", fontFamily: "'DM Sans', system-ui",
               }}>
-                {loading ? (<><div style={{ width: "13px", height: "13px", border: "2px solid #ffffff44", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />Humanizing...</>) : hasReachedLimit ? "Limit reached — Sign up free" : "Humanize →"}
+                {loading ? (<><div style={{ width: "13px", height: "13px", border: "2px solid #ffffff44", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />Humanizing...</>) : hasReachedLimit ? "Come back tomorrow" : "Humanize →"}
               </button>
             </div>
           </div>
@@ -368,28 +347,10 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
           </div>
         )}
 
-        {/* CTA banner */}
-        <SignedOut>
-          <div style={{ marginTop: "40px", background: "#7c3aed12", border: "1px solid #7c3aed33", borderRadius: "12px", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-            <div>
-              <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "4px" }}>Get 20 free uses per day</div>
-              <div style={{ fontSize: "13px", color: "#9ca3af" }}>Sign up free — no credit card, no paywall.</div>
-            </div>
-            <button onClick={() => openSignUp()} style={{ background: "#7c3aed", border: "none", borderRadius: "8px", padding: "10px 22px", color: "#fff", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>
-              Create Free Account →
-            </button>
-          </div>
-        </SignedOut>
       </div>
 
       {/* Popup */}
-      {showPopup && (
-        <SignupPopup
-          onClose={() => setShowPopup(false)}
-          openSignIn={() => { setShowPopup(false); openSignIn(); }}
-          openSignUp={() => { setShowPopup(false); openSignUp(); }}
-        />
-      )}
+      {showPopup && <SignupPopup onClose={() => setShowPopup(false)} />}
     </div>
   );
 }
