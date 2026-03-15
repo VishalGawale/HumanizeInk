@@ -1,16 +1,19 @@
 import { useState, useCallback, useEffect } from "react";
+import { supabase } from "./supabase.js";
 
 // ─── LIMITS ───────────────────────────────────────────────
 const GUEST_LIMIT = 3;
+const FREE_LIMIT = 20;
 const STORAGE_KEY = "hum_usage";
 
 function getTodayKey() {
   return new Date().toISOString().split("T")[0];
 }
 
-function getUsage() {
+function getUsage(userId) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
+    const raw = localStorage.getItem(key);
     if (!raw) return { date: getTodayKey(), count: 0 };
     const parsed = JSON.parse(raw);
     if (parsed.date !== getTodayKey()) return { date: getTodayKey(), count: 0 };
@@ -20,50 +23,159 @@ function getUsage() {
   }
 }
 
-function incrementUsage() {
-  const usage = getUsage();
+function incrementUsage(userId) {
+  const key = userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
+  const usage = getUsage(userId);
   const updated = { date: getTodayKey(), count: usage.count + 1 };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  localStorage.setItem(key, JSON.stringify(updated));
   return updated.count;
 }
 
-// ─── AI SCORE ─────────────────────────────────────────────
-const AIScore = ({ score, label }) => {
-  // Before = red (bad), After = green (good)
-  const isBefore = label === "Before";
-  const color = isBefore ? "#f87171" : "#4ade80";
-  const blocks = Math.round(score / 10);
+// ─── AUTH MODAL ───────────────────────────────────────────
+const AuthModal = ({ onClose, onSuccess }) => {
+  const [mode, setMode] = useState("signup"); // signup | signin
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: "https://humanizer.ink" },
+    });
+    if (error) setError(error.message);
+    setLoading(false);
+  };
+
+  const handleEmail = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
+
+    if (mode === "signup") {
+      const { error } = await supabase.auth.signUp({
+        email, password,
+        options: { emailRedirectTo: "https://humanizer.ink" },
+      });
+      if (error) setError(error.message);
+      else setMessage("Check your email to confirm your account!");
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) setError(error.message);
+      else { onSuccess(); onClose(); }
+    }
+    setLoading(false);
+  };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-      <div style={{ fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>{label}</div>
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 1000,
+      background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
+    }}>
+      <div style={{
+        background: "#0f1117", border: "1px solid #7c3aed44",
+        borderRadius: "16px", padding: "36px 32px", maxWidth: "400px", width: "100%",
+        boxShadow: "0 0 60px #7c3aed22", animation: "fadeIn 0.3s ease",
+      }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#7c3aed22", border: "1px solid #7c3aed44", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: "20px" }}>✍️</div>
+          <h2 style={{ fontSize: "20px", fontWeight: "700", color: "#f9fafb", marginBottom: "6px" }}>
+            {mode === "signup" ? "Create free account" : "Welcome back"}
+          </h2>
+          <p style={{ color: "#6b7280", fontSize: "13px" }}>
+            {mode === "signup" ? "Get 20 free humanizations per day" : "Sign in to your account"}
+          </p>
+        </div>
 
-      {/* Vertical bar chart */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: "3px", height: "60px" }}>
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} style={{
-            width: "14px",
-            height: `${(i + 1) * 6}px`,
-            borderRadius: "2px 2px 0 0",
-            background: i < blocks ? color : "#1f2937",
-            border: i < blocks ? `1px solid ${color}44` : "1px solid #374151",
-            transition: "background 0.4s ease",
-          }} />
-        ))}
-      </div>
+        {/* Google button */}
+        <button onClick={handleGoogle} disabled={loading} style={{
+          width: "100%", padding: "11px", borderRadius: "8px",
+          background: "#fff", border: "none", color: "#111",
+          fontSize: "14px", fontWeight: "600", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
+          marginBottom: "16px", fontFamily: "'DM Sans', system-ui",
+        }}>
+          <svg width="18" height="18" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+            <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+            <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+          </svg>
+          Continue with Google
+        </button>
 
-      <div style={{ fontSize: "22px", fontWeight: "700", color, fontFamily: "'DM Mono', monospace", lineHeight: 1 }}>
-        {score}<span style={{ fontSize: "12px", color: "#6b7280" }}>/100</span>
-      </div>
-      <div style={{ fontSize: "10px", color: isBefore ? "#f8717188" : "#4ade8088", fontFamily: "'DM Mono', monospace" }}>
-        {isBefore ? "AI detected" : "looks human"}
+        {/* Divider */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+          <div style={{ flex: 1, height: "1px", background: "#1f2937" }} />
+          <span style={{ fontSize: "12px", color: "#4b5563", fontFamily: "'DM Mono', monospace" }}>or email</span>
+          <div style={{ flex: 1, height: "1px", background: "#1f2937" }} />
+        </div>
+
+        {/* Email form */}
+        <form onSubmit={handleEmail}>
+          <input
+            type="email" placeholder="Email address" value={email}
+            onChange={e => setEmail(e.target.value)} required
+            style={{
+              width: "100%", padding: "11px 14px", borderRadius: "8px",
+              background: "#0a0a0f", border: "1px solid #1f2937",
+              color: "#e5e7eb", fontSize: "14px", marginBottom: "10px",
+              fontFamily: "'DM Sans', system-ui", outline: "none",
+            }}
+          />
+          <input
+            type="password" placeholder="Password" value={password}
+            onChange={e => setPassword(e.target.value)} required
+            style={{
+              width: "100%", padding: "11px 14px", borderRadius: "8px",
+              background: "#0a0a0f", border: "1px solid #1f2937",
+              color: "#e5e7eb", fontSize: "14px", marginBottom: "14px",
+              fontFamily: "'DM Sans', system-ui", outline: "none",
+            }}
+          />
+
+          {error && <div style={{ color: "#fca5a5", fontSize: "13px", marginBottom: "10px" }}>⚠ {error}</div>}
+          {message && <div style={{ color: "#4ade80", fontSize: "13px", marginBottom: "10px" }}>✓ {message}</div>}
+
+          <button type="submit" disabled={loading} style={{
+            width: "100%", padding: "12px", borderRadius: "8px",
+            background: "#7c3aed", border: "none", color: "#fff",
+            fontSize: "14px", fontWeight: "600", cursor: "pointer",
+            fontFamily: "'DM Sans', system-ui",
+          }}>
+            {loading ? "Loading..." : mode === "signup" ? "Create Account" : "Sign In"}
+          </button>
+        </form>
+
+        {/* Switch mode */}
+        <div style={{ textAlign: "center", marginTop: "16px" }}>
+          <button onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); setMessage(""); }} style={{
+            background: "none", border: "none", color: "#6b7280", fontSize: "13px", cursor: "pointer",
+            fontFamily: "'DM Sans', system-ui",
+          }}>
+            {mode === "signup" ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+          </button>
+        </div>
+
+        {/* Close */}
+        <div style={{ textAlign: "center", marginTop: "12px" }}>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#374151", fontSize: "12px", cursor: "pointer", fontFamily: "'DM Mono', monospace" }}>
+            maybe later ×
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-// ─── SIGNUP POPUP ─────────────────────────────────────────
-const SignupPopup = ({ onClose }) => (
+// ─── LIMIT POPUP ──────────────────────────────────────────
+const LimitPopup = ({ onClose, onSignup }) => (
   <div style={{
     position: "fixed", inset: 0, zIndex: 1000,
     background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)",
@@ -75,49 +187,57 @@ const SignupPopup = ({ onClose }) => (
       boxShadow: "0 0 60px #7c3aed22", textAlign: "center",
       animation: "fadeIn 0.3s ease",
     }}>
-      <div style={{
-        width: "56px", height: "56px", borderRadius: "14px",
-        background: "#7c3aed22", border: "1px solid #7c3aed44",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        margin: "0 auto 20px", fontSize: "24px",
-      }}>✍️</div>
-      <h2 style={{ fontSize: "22px", fontWeight: "700", marginBottom: "10px", color: "#f9fafb" }}>
-        You've used your free quota
-      </h2>
+      <div style={{ width: "56px", height: "56px", borderRadius: "14px", background: "#7c3aed22", border: "1px solid #7c3aed44", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: "24px" }}>✍️</div>
+      <h2 style={{ fontSize: "22px", fontWeight: "700", marginBottom: "10px", color: "#f9fafb" }}>You've used your free quota</h2>
       <p style={{ color: "#9ca3af", fontSize: "14px", lineHeight: "1.6", marginBottom: "28px" }}>
-        You've used your <span style={{ color: "#a78bfa", fontWeight: "600" }}>3 free daily uses</span>. Come back tomorrow for more — completely free, no account needed.
+        Sign up free and get <span style={{ color: "#a78bfa", fontWeight: "600" }}>20 humanizations per day</span> — no credit card needed.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "28px", textAlign: "left" }}>
-        {[
-          "3 free uses every day — no signup",
-          "No credit card ever required",
-          "Explains every change it makes",
-          "AI score before and after",
-        ].map((perk, i) => (
+        {["20 free uses every day", "Google or Email signup", "Priority processing", "Early access to new features"].map((perk, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#14532d", border: "1px solid #4ade8044", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", flexShrink: 0 }}>✓</div>
             <span style={{ fontSize: "13px", color: "#d1d5db" }}>{perk}</span>
           </div>
         ))}
       </div>
-      <button onClick={onClose} style={{
-        width: "100%", padding: "13px", borderRadius: "8px",
-        background: "#7c3aed", border: "none", color: "#fff",
-        fontSize: "15px", fontWeight: "600", cursor: "pointer",
-        fontFamily: "'DM Sans', system-ui",
-      }}>
-        OK, come back tomorrow
+      <button onClick={onSignup} style={{ width: "100%", padding: "13px", borderRadius: "8px", background: "#7c3aed", border: "none", color: "#fff", fontSize: "15px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: "'DM Sans', system-ui" }}>
+        Create Free Account
       </button>
-      <button onClick={onClose} style={{
-        marginTop: "16px", background: "none", border: "none",
-        color: "#4b5563", fontSize: "12px", cursor: "pointer",
-        fontFamily: "'DM Mono', monospace",
-      }}>
-        close ×
+      <button onClick={onClose} style={{ marginTop: "8px", background: "none", border: "none", color: "#4b5563", fontSize: "12px", cursor: "pointer", fontFamily: "'DM Mono', monospace" }}>
+        maybe later ×
       </button>
     </div>
   </div>
 );
+
+// ─── AI SCORE ─────────────────────────────────────────────
+const AIScore = ({ score, label }) => {
+  const isBefore = label === "Before";
+  const color = isBefore ? "#f87171" : "#4ade80";
+  const blocks = Math.round(score / 10);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+      <div style={{ fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>{label}</div>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: "3px", height: "60px" }}>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} style={{
+            width: "14px", height: `${(i + 1) * 6}px`,
+            borderRadius: "2px 2px 0 0",
+            background: i < blocks ? color : "#1f2937",
+            border: i < blocks ? `1px solid ${color}44` : "1px solid #374151",
+            transition: "background 0.4s ease",
+          }} />
+        ))}
+      </div>
+      <div style={{ fontSize: "20px", fontWeight: "700", color, fontFamily: "'DM Mono', monospace", lineHeight: 1 }}>
+        {score}<span style={{ fontSize: "12px", color: "#6b7280" }}>/100</span>
+      </div>
+      <div style={{ fontSize: "10px", color: isBefore ? "#f8717188" : "#4ade8088", fontFamily: "'DM Mono', monospace" }}>
+        {isBefore ? "AI detected" : "looks human"}
+      </div>
+    </div>
+  );
+};
 
 // ─── USAGE BADGE ──────────────────────────────────────────
 const UsageBadge = ({ used, limit }) => {
@@ -131,13 +251,9 @@ const UsageBadge = ({ used, limit }) => {
       borderRadius: "20px", padding: "5px 12px",
       fontSize: "12px", fontFamily: "'DM Mono', monospace",
     }}>
-      <div style={{
-        width: "6px", height: "6px", borderRadius: "50%",
-        background: isLow ? "#f87171" : "#4ade80",
-        boxShadow: isLow ? "0 0 6px #f87171" : "0 0 6px #4ade80",
-      }} />
+      <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: isLow ? "#f87171" : "#4ade80", boxShadow: isLow ? "0 0 6px #f87171" : "0 0 6px #4ade80" }} />
       <span style={{ color: isLow ? "#fca5a5" : "#9ca3af" }}>
-        {remaining <= 0 ? "No uses left today" : `${remaining} use${remaining !== 1 ? "s" : ""} left today`}
+        {remaining <= 0 ? "No uses left" : `${remaining} use${remaining !== 1 ? "s" : ""} left today`}
       </span>
     </div>
   );
@@ -145,24 +261,42 @@ const UsageBadge = ({ used, limit }) => {
 
 // ─── MAIN APP ─────────────────────────────────────────────
 export default function App() {
+  const [user, setUser] = useState(null);
   const [input, setText] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
-  const [usage, setUsage] = useState(getUsage);
+  const [showLimitPopup, setShowLimitPopup] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [usage, setUsage] = useState(() => getUsage(null));
   const [mode, setMode] = useState("standard");
 
-  useEffect(() => { setUsage(getUsage()); }, []);
+  // Listen for auth changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setUsage(getUsage(session?.user?.id));
+    });
 
-  const limit = GUEST_LIMIT;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setUsage(getUsage(session?.user?.id));
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const limit = user ? FREE_LIMIT : GUEST_LIMIT;
   const usedToday = usage.count;
   const hasReachedLimit = usedToday >= limit;
 
   const humanize = useCallback(async () => {
     if (!input.trim() || loading) return;
-    if (hasReachedLimit) { setShowPopup(true); return; }
+    if (hasReachedLimit) {
+      user ? alert("Daily limit reached. Come back tomorrow!") : setShowLimitPopup(true);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -176,18 +310,20 @@ export default function App() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Server error");
-      const newCount = incrementUsage();
+
+      const newCount = incrementUsage(user?.id);
       setUsage({ date: getTodayKey(), count: newCount });
       setResult(data);
-      if (newCount >= GUEST_LIMIT) {
-        setTimeout(() => setShowPopup(true), 1500);
+
+      if (!user && newCount >= GUEST_LIMIT) {
+        setTimeout(() => setShowLimitPopup(true), 1500);
       }
     } catch (err) {
       setError(err.message || "Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
-  }, [input, loading, hasReachedLimit, mode]);
+  }, [input, loading, hasReachedLimit, user, mode]);
 
   const copyOutput = () => {
     if (result?.humanized) {
@@ -195,6 +331,11 @@ export default function App() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
   };
 
   const sampleText = `Great question! Here is an overview of remote work trends. I hope this helps!
@@ -212,6 +353,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
         * { box-sizing: border-box; margin: 0; padding: 0; }
         textarea { resize: none; outline: none; }
         textarea:focus { border-color: #7c3aed !important; box-shadow: 0 0 0 3px #7c3aed15 !important; }
+        input:focus { border-color: #7c3aed !important; outline: none; }
         .btn-primary:hover:not(:disabled) { background: #6d28d9 !important; transform: translateY(-1px); }
         .mode-btn:hover { border-color: #7c3aed44 !important; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -236,6 +378,19 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <UsageBadge used={usedToday} limit={limit} />
+            {user ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "13px", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>{user.email?.split("@")[0]}</span>
+                <button onClick={handleSignOut} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "6px 12px", color: "#6b7280", fontSize: "12px", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <>
+                <button onClick={() => setShowAuthModal(true)} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "7px 14px", color: "#9ca3af", fontSize: "13px", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign in</button>
+                <button onClick={() => setShowAuthModal(true)} style={{ background: "#7c3aed", border: "none", borderRadius: "7px", padding: "7px 14px", color: "#fff", fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign up free</button>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -296,7 +451,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
                 fontSize: "14px", fontWeight: "600", transition: "all 0.2s",
                 display: "flex", alignItems: "center", gap: "8px", fontFamily: "'DM Sans', system-ui",
               }}>
-                {loading ? (<><div style={{ width: "13px", height: "13px", border: "2px solid #ffffff44", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />Humanizing...</>) : hasReachedLimit ? "Come back tomorrow" : "Humanize →"}
+                {loading ? (<><div style={{ width: "13px", height: "13px", border: "2px solid #ffffff44", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />Humanizing...</>) : hasReachedLimit ? "Sign up for more →" : "Humanize →"}
               </button>
             </div>
           </div>
@@ -337,35 +492,20 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
         {result && (() => {
           const improvement = result.score_before - result.score_after;
           const humanScore = 100 - result.score_after;
-
-          // Derive 5 quality metrics from the scores
           const metrics = [
-            { label: "Human Written",          score: Math.min(99, humanScore + Math.floor(Math.random() * 5)) },
-            { label: "Expression Quality",     score: Math.min(99, humanScore - 3 + Math.floor(Math.random() * 8)) },
-            { label: "Clarity Score",          score: Math.min(99, humanScore + 2 + Math.floor(Math.random() * 6)) },
-            { label: "Coherence",              score: Math.min(99, humanScore - 5 + Math.floor(Math.random() * 8)) },
-            { label: "Naturalness",            score: Math.min(99, humanScore + 1 + Math.floor(Math.random() * 5)) },
+            { label: "Human Written",      score: Math.min(99, humanScore + Math.floor(Math.random() * 5)) },
+            { label: "Expression Quality", score: Math.min(99, humanScore - 3 + Math.floor(Math.random() * 8)) },
+            { label: "Clarity Score",      score: Math.min(99, humanScore + 2 + Math.floor(Math.random() * 6)) },
+            { label: "Coherence",          score: Math.min(99, humanScore - 5 + Math.floor(Math.random() * 8)) },
+            { label: "Naturalness",        score: Math.min(99, humanScore + 1 + Math.floor(Math.random() * 5)) },
           ].map(m => ({ ...m, score: Math.max(10, m.score) }));
-
           const allGood = metrics.every(m => m.score >= 70);
 
           return (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
-              {/* Success banner */}
-              <div style={{
-                background: allGood ? "#0d1f17" : "#1a1000",
-                border: `1px solid ${allGood ? "#4ade8033" : "#fb923c33"}`,
-                borderRadius: "12px", padding: "14px 20px",
-                display: "flex", alignItems: "center", gap: "12px",
-              }}>
-                <div style={{
-                  width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
-                  background: allGood ? "#14532d" : "#431407",
-                  border: `1px solid ${allGood ? "#4ade8044" : "#fb923c44"}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "14px",
-                }}>
+              {/* Banner */}
+              <div style={{ background: allGood ? "#0d1f17" : "#1a1000", border: `1px solid ${allGood ? "#4ade8033" : "#fb923c33"}`, borderRadius: "12px", padding: "14px 20px", display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0, background: allGood ? "#14532d" : "#431407", border: `1px solid ${allGood ? "#4ade8044" : "#fb923c44"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>
                   {allGood ? "✓" : "~"}
                 </div>
                 <div>
@@ -373,7 +513,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
                     {allGood ? "This text reads as human-written" : "Mostly humanized — some patterns remain"}
                   </div>
                   <div style={{ fontSize: "12px", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>
-                    AI score dropped from {result.score_before} → {result.score_after} &nbsp;·&nbsp; -{improvement} point improvement
+                    AI score dropped {result.score_before} → {result.score_after} · -{improvement} point improvement
                   </div>
                 </div>
                 <div style={{ marginLeft: "auto", fontSize: "22px", fontWeight: "800", color: allGood ? "#4ade80" : "#fb923c", fontFamily: "'DM Mono', monospace" }}>
@@ -382,13 +522,9 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
                 </div>
               </div>
 
-              {/* Bottom row — scores + bar chart + changes */}
               <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-
-                {/* Left — bar chart + quality metrics */}
+                {/* Score + metrics */}
                 <div className="card" style={{ padding: "20px 24px", flex: "1.2", minWidth: "300px" }}>
-
-                  {/* Bar chart row */}
                   <div style={{ display: "flex", gap: "24px", alignItems: "flex-end", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid #1f2937" }}>
                     <AIScore score={result.score_before} label="Before" />
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingBottom: "8px" }}>
@@ -398,8 +534,6 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
                     </div>
                     <AIScore score={result.score_after} label="After" />
                   </div>
-
-                  {/* Quality metrics */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {metrics.map((metric, i) => {
                       const color = metric.score >= 80 ? "#4ade80" : metric.score >= 60 ? "#facc15" : "#fb923c";
@@ -417,7 +551,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
                   </div>
                 </div>
 
-                {/* Right — what changed */}
+                {/* Changes */}
                 <div className="card" style={{ padding: "20px", flex: "2", minWidth: "280px" }}>
                   <div style={{ fontSize: "10px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#4b5563", fontFamily: "'DM Mono', monospace", marginBottom: "14px" }}>What changed</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -429,21 +563,27 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
                     ))}
                   </div>
                 </div>
-
               </div>
             </div>
           );
         })()}
 
+        {/* CTA for guests */}
+        {!user && (
+          <div style={{ marginTop: "40px", background: "#7c3aed12", border: "1px solid #7c3aed33", borderRadius: "12px", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "4px" }}>Get 20 free uses per day</div>
+              <div style={{ fontSize: "13px", color: "#9ca3af" }}>Sign up free — Google or Email, no credit card.</div>
+            </div>
+            <button onClick={() => setShowAuthModal(true)} style={{ background: "#7c3aed", border: "none", borderRadius: "8px", padding: "10px 22px", color: "#fff", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>
+              Create Free Account →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
-      <footer style={{
-        position: "relative", zIndex: 1,
-        borderTop: "1px solid #1f2937",
-        padding: "24px",
-        textAlign: "center",
-      }}>
+      <footer style={{ position: "relative", zIndex: 1, borderTop: "1px solid #1f2937", padding: "24px" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ width: "20px", height: "20px", borderRadius: "5px", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px" }}>✍</div>
@@ -454,7 +594,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
           </div>
           <div style={{ display: "flex", gap: "20px" }}>
             {["Privacy Policy", "Terms of Use", "Contact"].map((link) => (
-              <a key={link} href="#" style={{ fontSize: "12px", color: "#4b5563", textDecoration: "none", fontFamily: "'DM Mono', monospace", transition: "color 0.2s" }}
+              <a key={link} href="#" style={{ fontSize: "12px", color: "#4b5563", textDecoration: "none", fontFamily: "'DM Mono', monospace" }}
                 onMouseOver={e => e.target.style.color = "#a78bfa"}
                 onMouseOut={e => e.target.style.color = "#4b5563"}
               >{link}</a>
@@ -463,8 +603,19 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
         </div>
       </footer>
 
-      {/* Popup */}
-      {showPopup && <SignupPopup onClose={() => setShowPopup(false)} />}
+      {/* Modals */}
+      {showLimitPopup && (
+        <LimitPopup
+          onClose={() => setShowLimitPopup(false)}
+          onSignup={() => { setShowLimitPopup(false); setShowAuthModal(true); }}
+        />
+      )}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={() => setShowAuthModal(false)}
+        />
+      )}
     </div>
   );
 }
