@@ -2,8 +2,6 @@ import { useState, useCallback, useEffect } from "react";
 import {
   useUser,
   useClerk,
-  SignedIn,
-  SignedOut,
   UserButton,
 } from "@clerk/react";
 
@@ -300,29 +298,31 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <UsageBadge used={usedToday} limit={limit} isSignedIn={isSignedIn} />
 
-            <SignedOut>
-              <button className="btn-secondary" onClick={() => openSignIn()} style={{
-                background: "transparent", border: "1px solid #374151",
-                borderRadius: "7px", padding: "7px 14px",
-                color: "#9ca3af", fontSize: "13px", cursor: "pointer",
-                transition: "all 0.2s", fontFamily: "'DM Sans', system-ui",
-              }}>
-                Sign in
-              </button>
-              <button onClick={() => openSignUp()} style={{
-                background: "#7c3aed", border: "none",
-                borderRadius: "7px", padding: "7px 14px",
-                color: "#fff", fontSize: "13px", fontWeight: "600",
-                cursor: "pointer", transition: "background 0.2s",
-                fontFamily: "'DM Sans', system-ui",
-              }}>
-                Sign up free
-              </button>
-            </SignedOut>
+            {!isSignedIn && (
+              <>
+                <button className="btn-secondary" onClick={() => openSignIn()} style={{
+                  background: "transparent", border: "1px solid #374151",
+                  borderRadius: "7px", padding: "7px 14px",
+                  color: "#9ca3af", fontSize: "13px", cursor: "pointer",
+                  transition: "all 0.2s", fontFamily: "'DM Sans', system-ui",
+                }}>
+                  Sign in
+                </button>
+                <button onClick={() => openSignUp()} style={{
+                  background: "#7c3aed", border: "none",
+                  borderRadius: "7px", padding: "7px 14px",
+                  color: "#fff", fontSize: "13px", fontWeight: "600",
+                  cursor: "pointer", transition: "background 0.2s",
+                  fontFamily: "'DM Sans', system-ui",
+                }}>
+                  Sign up free
+                </button>
+              </>
+            )}
 
-            <SignedIn>
+            {isSignedIn && (
               <UserButton afterSignOutUrl="/" />
-            </SignedIn>
+            )}
           </div>
         </div>
       </nav>
@@ -501,7 +501,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
         )}
 
         {/* Free user CTA banner */}
-        <SignedOut>
+        {!isSignedIn && (
           <div style={{
             marginTop: "40px", background: "#7c3aed12",
             border: "1px solid #7c3aed33", borderRadius: "12px",
@@ -522,7 +522,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
               Create Free Account →
             </button>
           </div>
-        </SignedOut>
+        )}
 
       </div>
 
