@@ -13,42 +13,35 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Text too long. Max 5000 characters." });
   }
 
-  // Different system prompts per mode
   const modeInstructions = {
-    fast: `Make minimal changes. Fix obvious AI patterns only. Keep most of the original wording. Light touch.`,
-    standard: `Remove AI patterns thoroughly. Rewrite for natural human flow. Balanced approach.`,
-    enhanced: `Aggressively rewrite the entire text. Change structure, vary rhythm heavily, add personality and opinions. Maximum humanization.`,
+    fast: "Make minimal changes. Fix obvious AI patterns only. Light touch.",
+    standard: "Remove AI patterns thoroughly. Rewrite for natural human flow. Balanced approach.",
+    enhanced: "Aggressively rewrite. Change structure, vary rhythm heavily, add personality. Maximum humanization.",
   };
 
-  const systemPrompt = `You are a ruthless AI writing editor. Your job: make AI-generated text sound like it was written by an actual human.
+  const systemPrompt = `You are a ruthless AI writing editor. Make AI-generated text sound human.
 
 Mode: ${mode.toUpperCase()} — ${modeInstructions[mode] || modeInstructions.standard}
 
-Remove these AI patterns:
-- Significance inflation: "pivotal moment", "testament to", "evolving landscape", "marking a shift"
-- Promotional fluff: "vibrant", "groundbreaking", "nestled", "breathtaking", "stunning"
-- Fake depth -ing phrases: "highlighting", "underscoring", "showcasing", "fostering", "cultivating"
-- Vague sources: "experts argue", "observers note", "industry reports suggest"
+Remove these patterns:
+- Significance inflation: "pivotal moment", "testament to", "evolving landscape"
+- Fluff: "vibrant", "groundbreaking", "nestled", "breathtaking"
+- Fake -ing phrases: "highlighting", "underscoring", "showcasing", "fostering"
+- Vague sources: "experts argue", "observers note", "industry reports"
 - Chatbot artifacts: "Great question!", "I hope this helps!", "Let me know if..."
-- Generic endings: "the future looks bright", "exciting times lie ahead", "journey toward excellence"
-- Filler: "In order to", "It is important to note that", "At this point in time"
-- Copula avoidance: replace "serves as", "functions as", "stands as" with "is"
-- Em dash overuse, emoji bullets, curly quotes
-- Rule of three patterns and synonym cycling
+- Generic endings: "the future looks bright", "exciting times lie ahead"
+- Filler: "In order to", "It is important to note that"
+- Replace "serves as", "functions as", "stands as" with "is"
 
-Rewrite rules:
-1. Be direct. Cut fluff. Use simple words.
-2. Vary rhythm — short punchy sentences mixed with longer ones.
-3. Add personality and opinions where natural.
-4. Use "I" or specific examples when appropriate.
-5. Let some natural imperfection in.
+Rules:
+1. Be direct. Cut fluff.
+2. Vary rhythm — short and long sentences mixed.
+3. Add personality where natural.
+4. Use specific details over vague claims.
 
-IMPORTANT: Respond with ONLY a raw JSON object. No markdown. No backticks. Start with { end with }.
+Respond with ONLY raw JSON. No markdown. No backticks. Start with { end with }
 
-{"humanized":"rewritten text here","changes":["change 1","change 2","change 3"],"score_before":82,"score_after":15}
-
-score_before and score_after = AI-ness from 0 (human) to 100 (pure AI slop).
-Keep changes to 4-6 bullets, specific and punchy.`;
+{"humanized":"rewritten text","changes":["change 1","change 2","change 3"],"score_before":82,"score_after":15}`;
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -63,7 +56,7 @@ Keep changes to 4-6 bullets, specific and punchy.`;
         temperature: mode === "enhanced" ? 0.9 : mode === "fast" ? 0.5 : 0.7,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Humanize this text and respond with only JSON:\n\n${text}` },
+          { role: "user", content: `Humanize this text, respond with only JSON:\n\n${text}` },
         ],
       }),
     });
@@ -87,7 +80,6 @@ Keep changes to 4-6 bullets, specific and punchy.`;
     const lastBrace = clean.lastIndexOf("}");
 
     if (firstBrace === -1 || lastBrace === -1) {
-      console.error("No JSON found in response:", clean);
       return res.status(500).json({ error: "Could not parse response. Try again." });
     }
 
@@ -95,7 +87,7 @@ Keep changes to 4-6 bullets, specific and punchy.`;
     const parsed = JSON.parse(clean);
 
     if (!parsed.humanized) {
-      return res.status(500).json({ error: "Invalid response format. Try again." });
+      return res.status(500).json({ error: "Invalid response. Try again." });
     }
 
     return res.status(200).json({

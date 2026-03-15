@@ -2,16 +2,18 @@ import { useState, useCallback, useEffect } from "react";
 import {
   useUser,
   useClerk,
+  SignedIn,
+  SignedOut,
   UserButton,
-} from "@clerk/clerk-react"
+} from "@clerk/clerk-react";
 
 // ─── LIMITS ───────────────────────────────────────────────
-const GUEST_LIMIT = 3;       // per day, no account
-const FREE_LIMIT = 20;       // per day, signed in free user
-const STORAGE_KEY = "hum_usage"; // localStorage key
+const GUEST_LIMIT = 3;
+const FREE_LIMIT = 20;
+const STORAGE_KEY = "hum_usage";
 
 function getTodayKey() {
-  return new Date().toISOString().split("T")[0]; // "2026-03-15"
+  return new Date().toISOString().split("T")[0];
 }
 
 function getUsage() {
@@ -33,10 +35,9 @@ function incrementUsage() {
   return updated.count;
 }
 
-// ─── AI SCORE COMPONENT ───────────────────────────────────
+// ─── AI SCORE ─────────────────────────────────────────────
 const AIScore = ({ score, label }) => {
-  const color =
-    score < 25 ? "#4ade80" : score < 50 ? "#facc15" : score < 75 ? "#fb923c" : "#f87171";
+  const color = score < 25 ? "#4ade80" : score < 50 ? "#facc15" : score < 75 ? "#fb923c" : "#f87171";
   const blocks = Math.round(score / 10);
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
@@ -62,9 +63,8 @@ const AIScore = ({ score, label }) => {
 const SignupPopup = ({ onClose, openSignIn, openSignUp }) => (
   <div style={{
     position: "fixed", inset: 0, zIndex: 1000,
-    background: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    padding: "20px",
+    background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)",
+    display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
   }}>
     <div style={{
       background: "#0f1117", border: "1px solid #7c3aed44",
@@ -72,57 +72,41 @@ const SignupPopup = ({ onClose, openSignIn, openSignUp }) => (
       boxShadow: "0 0 60px #7c3aed22", textAlign: "center",
       animation: "fadeIn 0.3s ease",
     }}>
-      {/* Icon */}
       <div style={{
         width: "56px", height: "56px", borderRadius: "14px",
         background: "#7c3aed22", border: "1px solid #7c3aed44",
         display: "flex", alignItems: "center", justifyContent: "center",
         margin: "0 auto 20px", fontSize: "24px",
       }}>✍️</div>
-
-      {/* Heading */}
       <h2 style={{ fontSize: "22px", fontWeight: "700", marginBottom: "10px", color: "#f9fafb" }}>
         You've used your free quota
       </h2>
       <p style={{ color: "#9ca3af", fontSize: "14px", lineHeight: "1.6", marginBottom: "28px" }}>
-        Sign up for free and get <span style={{ color: "#a78bfa", fontWeight: "600" }}>20 humanizations per day</span> — no credit card needed.
+        Sign up free and get <span style={{ color: "#a78bfa", fontWeight: "600" }}>20 humanizations per day</span> — no credit card needed.
       </p>
-
-      {/* Perks */}
       <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "28px", textAlign: "left" }}>
-        {[
-          "20 free uses every day",
-          "Save your humanization history",
-          "Priority processing",
-          "Early access to new features",
-        ].map((perk, i) => (
+        {["20 free uses every day", "Save your humanization history", "Priority processing", "Early access to new features"].map((perk, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#14532d", border: "1px solid #4ade8044", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", flexShrink: 0 }}>✓</div>
             <span style={{ fontSize: "13px", color: "#d1d5db" }}>{perk}</span>
           </div>
         ))}
       </div>
-
-      {/* Buttons */}
       <button onClick={openSignUp} style={{
         width: "100%", padding: "13px", borderRadius: "8px",
         background: "#7c3aed", border: "none", color: "#fff",
         fontSize: "15px", fontWeight: "600", cursor: "pointer",
-        marginBottom: "10px", transition: "background 0.2s",
-        fontFamily: "'DM Sans', system-ui, sans-serif",
+        marginBottom: "10px", fontFamily: "'DM Sans', system-ui",
       }}>
         Create Free Account
       </button>
-
       <button onClick={openSignIn} style={{
         width: "100%", padding: "12px", borderRadius: "8px",
         background: "transparent", border: "1px solid #374151", color: "#9ca3af",
-        fontSize: "14px", cursor: "pointer", transition: "border-color 0.2s",
-        fontFamily: "'DM Sans', system-ui, sans-serif",
+        fontSize: "14px", cursor: "pointer", fontFamily: "'DM Sans', system-ui",
       }}>
         Already have an account? Sign in
       </button>
-
       <button onClick={onClose} style={{
         marginTop: "16px", background: "none", border: "none",
         color: "#4b5563", fontSize: "12px", cursor: "pointer",
@@ -152,18 +136,16 @@ const UsageBadge = ({ used, limit, isSignedIn }) => {
         boxShadow: isLow ? "0 0 6px #f87171" : "0 0 6px #4ade80",
       }} />
       <span style={{ color: isLow ? "#fca5a5" : "#9ca3af" }}>
-        {remaining <= 0 ? "No uses left" : `${remaining} use${remaining !== 1 ? "s" : ""} left today`}
+        {remaining <= 0 ? "No uses left" : `${remaining} use${remaining !== 1 ? "s" : ""} left`}
       </span>
-      {!isSignedIn && remaining > 0 && (
-        <span style={{ color: "#4b5563" }}>· guest</span>
-      )}
+      {!isSignedIn && remaining > 0 && <span style={{ color: "#4b5563" }}>· guest</span>}
     </div>
   );
 };
 
 // ─── MAIN APP ─────────────────────────────────────────────
 export default function App() {
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn } = useUser();
   const { openSignIn, openSignUp } = useClerk();
 
   const [input, setText] = useState("");
@@ -175,10 +157,7 @@ export default function App() {
   const [usage, setUsage] = useState(getUsage);
   const [mode, setMode] = useState("standard");
 
-  // Refresh usage on mount
-  useEffect(() => {
-    setUsage(getUsage());
-  }, [isSignedIn]);
+  useEffect(() => { setUsage(getUsage()); }, [isSignedIn]);
 
   const limit = isSignedIn ? FREE_LIMIT : GUEST_LIMIT;
   const usedToday = usage.count;
@@ -186,12 +165,7 @@ export default function App() {
 
   const humanize = useCallback(async () => {
     if (!input.trim() || loading) return;
-
-    // Check limit
-    if (hasReachedLimit) {
-      setShowPopup(true);
-      return;
-    }
+    if (hasReachedLimit) { setShowPopup(true); return; }
 
     setLoading(true);
     setError(null);
@@ -203,17 +177,11 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: input, mode }),
       });
-
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.error || "Server error");
-
-      // Increment usage
       const newCount = incrementUsage();
       setUsage({ date: getTodayKey(), count: newCount });
       setResult(data);
-
-      // Show popup after last free use
       if (!isSignedIn && newCount >= GUEST_LIMIT) {
         setTimeout(() => setShowPopup(true), 1500);
       }
@@ -241,93 +209,48 @@ The benefits are clear: enhanced productivity, fostering collaboration, and cult
 In conclusion, the future looks bright for remote work. Exciting times lie ahead as organizations continue their journey toward excellence.`;
 
   return (
-    <div style={{
-      minHeight: "100vh", background: "#0a0a0f",
-      fontFamily: "'DM Sans', system-ui, sans-serif",
-      color: "#e5e7eb", position: "relative", overflow: "hidden",
-    }}>
+    <div style={{ minHeight: "100vh", background: "#0a0a0f", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#e5e7eb", position: "relative", overflow: "hidden" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::selection { background: #7c3aed44; }
         textarea { resize: none; outline: none; }
         textarea:focus { border-color: #7c3aed !important; box-shadow: 0 0 0 3px #7c3aed15 !important; }
         .btn-primary:hover:not(:disabled) { background: #6d28d9 !important; transform: translateY(-1px); }
-        .btn-secondary:hover { border-color: #7c3aed !important; color: #a78bfa !important; }
         .mode-btn:hover { border-color: #7c3aed44 !important; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
         .fade-in { animation: fadeIn 0.4s ease forwards; }
-        .grid-bg {
-          position: fixed; inset: 0; pointer-events: none; z-index: 0;
-          background-image: linear-gradient(#ffffff06 1px, transparent 1px), linear-gradient(90deg, #ffffff06 1px, transparent 1px);
-          background-size: 40px 40px;
-        }
+        .grid-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; background-image: linear-gradient(#ffffff06 1px, transparent 1px), linear-gradient(90deg, #ffffff06 1px, transparent 1px); background-size: 40px 40px; }
         .glow { position: fixed; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle, #7c3aed15 0%, transparent 70%); pointer-events: none; z-index: 0; top: -200px; left: -100px; }
         .card { background: #0f1117; border: 1px solid #1f2937; border-radius: 12px; }
-        @media (max-width: 768px) {
-          .split { flex-direction: column !important; }
-          .split > div { width: 100% !important; }
-        }
+        @media (max-width: 768px) { .split { flex-direction: column !important; } .split > div { width: 100% !important; } }
       `}</style>
 
       <div className="grid-bg" />
       <div className="glow" />
 
-      {/* ── NAVBAR ── */}
-      <nav style={{
-        position: "relative", zIndex: 10,
-        borderBottom: "1px solid #1f2937",
-        background: "#0a0a0fcc", backdropFilter: "blur(10px)",
-        padding: "0 24px",
-      }}>
-        <div style={{
-          maxWidth: "1100px", margin: "0 auto",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          height: "60px",
-        }}>
-          {/* Logo */}
+      {/* NAVBAR */}
+      <nav style={{ position: "relative", zIndex: 10, borderBottom: "1px solid #1f2937", background: "#0a0a0fcc", backdropFilter: "blur(10px)", padding: "0 24px" }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "60px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ width: "28px", height: "28px", borderRadius: "7px", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>✍</div>
-            <span style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "-0.02em" }}>
-              humanizer<span style={{ color: "#7c3aed" }}>.ink</span>
-            </span>
+            <span style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "-0.02em" }}>humanizer<span style={{ color: "#7c3aed" }}>.ink</span></span>
           </div>
-
-          {/* Right side */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <UsageBadge used={usedToday} limit={limit} isSignedIn={isSignedIn} />
-
-            {!isSignedIn && (
-              <>
-                <button className="btn-secondary" onClick={() => openSignIn()} style={{
-                  background: "transparent", border: "1px solid #374151",
-                  borderRadius: "7px", padding: "7px 14px",
-                  color: "#9ca3af", fontSize: "13px", cursor: "pointer",
-                  transition: "all 0.2s", fontFamily: "'DM Sans', system-ui",
-                }}>
-                  Sign in
-                </button>
-                <button onClick={() => openSignUp()} style={{
-                  background: "#7c3aed", border: "none",
-                  borderRadius: "7px", padding: "7px 14px",
-                  color: "#fff", fontSize: "13px", fontWeight: "600",
-                  cursor: "pointer", transition: "background 0.2s",
-                  fontFamily: "'DM Sans', system-ui",
-                }}>
-                  Sign up free
-                </button>
-              </>
-            )}
-
-            {isSignedIn && (
+            <SignedOut>
+              <button onClick={() => openSignIn()} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "7px 14px", color: "#9ca3af", fontSize: "13px", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign in</button>
+              <button onClick={() => openSignUp()} style={{ background: "#7c3aed", border: "none", borderRadius: "7px", padding: "7px 14px", color: "#fff", fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign up free</button>
+            </SignedOut>
+            <SignedIn>
               <UserButton afterSignOutUrl="/" />
-            )}
+            </SignedIn>
           </div>
         </div>
       </nav>
 
-      {/* ── MAIN ── */}
+      {/* MAIN */}
       <div style={{ position: "relative", zIndex: 1, maxWidth: "1100px", margin: "0 auto", padding: "40px 24px 80px" }}>
 
         {/* Header */}
@@ -346,19 +269,14 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
 
         {/* Mode selector */}
         <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginBottom: "24px" }}>
-          {[
-            { id: "fast", label: "Fast", desc: "Light touch" },
-            { id: "standard", label: "Standard", desc: "Balanced" },
-            { id: "enhanced", label: "Enhanced", desc: "Deep rewrite" },
-          ].map((m) => (
+          {[{ id: "fast", label: "Fast", desc: "Light touch" }, { id: "standard", label: "Standard", desc: "Balanced" }, { id: "enhanced", label: "Enhanced", desc: "Deep rewrite" }].map((m) => (
             <button key={m.id} className="mode-btn" onClick={() => setMode(m.id)} style={{
               background: mode === m.id ? "#7c3aed15" : "transparent",
               border: `1px solid ${mode === m.id ? "#7c3aed" : "#1f2937"}`,
               borderRadius: "8px", padding: "8px 18px",
               color: mode === m.id ? "#a78bfa" : "#6b7280",
               fontSize: "13px", fontWeight: mode === m.id ? "600" : "400",
-              cursor: "pointer", transition: "all 0.2s",
-              fontFamily: "'DM Sans', system-ui",
+              cursor: "pointer", transition: "all 0.2s", fontFamily: "'DM Sans', system-ui",
             }}>
               {m.label}
               <span style={{ display: "block", fontSize: "10px", color: mode === m.id ? "#7c3aed" : "#4b5563", fontFamily: "'DM Mono', monospace" }}>{m.desc}</span>
@@ -368,95 +286,49 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
 
         {/* Split panel */}
         <div className="split" style={{ display: "flex", gap: "16px", marginBottom: "24px" }}>
-
-          {/* Left — input */}
+          {/* Input */}
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <span style={{ fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>Your text</span>
-              <button onClick={() => setText(sampleText)} style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: "11px", color: "#4b5563", fontFamily: "'DM Mono', monospace",
-                transition: "color 0.2s",
-              }}>
-                Load sample →
-              </button>
+              <button onClick={() => setText(sampleText)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", color: "#4b5563", fontFamily: "'DM Mono', monospace" }}>Load sample →</button>
             </div>
-            <textarea
-              value={input}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Paste your AI-generated text here..."
-              style={{
-                width: "100%", height: "280px",
-                background: "#0f1117", border: "1px solid #1f2937",
-                borderRadius: "12px", padding: "16px",
-                color: "#e5e7eb", fontSize: "14px", lineHeight: "1.7",
-                fontFamily: "'DM Sans', system-ui",
-                transition: "border-color 0.2s, box-shadow 0.2s",
-              }}
-            />
+            <textarea value={input} onChange={(e) => setText(e.target.value)} placeholder="Paste your AI-generated text here..." style={{ width: "100%", height: "280px", background: "#0f1117", border: "1px solid #1f2937", borderRadius: "12px", padding: "16px", color: "#e5e7eb", fontSize: "14px", lineHeight: "1.7", fontFamily: "'DM Sans', system-ui", transition: "border-color 0.2s" }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px" }}>
               <span style={{ fontSize: "11px", color: input.length > 4500 ? "#fb923c" : "#374151", fontFamily: "'DM Mono', monospace" }}>
                 {input.trim().split(/\s+/).filter(Boolean).length} words · {input.length}/5000
               </span>
-              <button
-                className="btn-primary"
-                onClick={humanize}
-                disabled={!input.trim() || loading}
-                style={{
-                  background: hasReachedLimit ? "#450a0a" : (input.trim() && !loading ? "#7c3aed" : "#1f2937"),
-                  border: hasReachedLimit ? "1px solid #7f1d1d" : "none",
-                  borderRadius: "8px", padding: "11px 24px",
-                  cursor: input.trim() ? "pointer" : "not-allowed",
-                  color: hasReachedLimit ? "#fca5a5" : (input.trim() && !loading ? "#fff" : "#4b5563"),
-                  fontSize: "14px", fontWeight: "600",
-                  transition: "all 0.2s",
-                  display: "flex", alignItems: "center", gap: "8px",
-                  fontFamily: "'DM Sans', system-ui",
-                }}
-              >
-                {loading ? (
-                  <>
-                    <div style={{ width: "13px", height: "13px", border: "2px solid #ffffff44", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                    Humanizing...
-                  </>
-                ) : hasReachedLimit ? "Limit reached — Sign up free" : "Humanize →"}
+              <button className="btn-primary" onClick={humanize} disabled={!input.trim() || loading} style={{
+                background: hasReachedLimit ? "#450a0a" : (input.trim() && !loading ? "#7c3aed" : "#1f2937"),
+                border: hasReachedLimit ? "1px solid #7f1d1d" : "none",
+                borderRadius: "8px", padding: "11px 24px",
+                cursor: input.trim() ? "pointer" : "not-allowed",
+                color: hasReachedLimit ? "#fca5a5" : (input.trim() && !loading ? "#fff" : "#4b5563"),
+                fontSize: "14px", fontWeight: "600", transition: "all 0.2s",
+                display: "flex", alignItems: "center", gap: "8px", fontFamily: "'DM Sans', system-ui",
+              }}>
+                {loading ? (<><div style={{ width: "13px", height: "13px", border: "2px solid #ffffff44", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />Humanizing...</>) : hasReachedLimit ? "Limit reached — Sign up free" : "Humanize →"}
               </button>
             </div>
           </div>
 
-          {/* Right — output */}
+          {/* Output */}
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <span style={{ fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>Humanized output</span>
               {result && (
-                <button onClick={copyOutput} style={{
-                  background: "#161b27", border: "1px solid #1f2937",
-                  borderRadius: "6px", padding: "4px 12px",
-                  color: copied ? "#4ade80" : "#9ca3af",
-                  fontSize: "11px", cursor: "pointer",
-                  fontFamily: "'DM Mono', monospace", transition: "all 0.2s",
-                }}>
+                <button onClick={copyOutput} style={{ background: "#161b27", border: "1px solid #1f2937", borderRadius: "6px", padding: "4px 12px", color: copied ? "#4ade80" : "#9ca3af", fontSize: "11px", cursor: "pointer", fontFamily: "'DM Mono', monospace" }}>
                   {copied ? "✓ Copied" : "Copy"}
                 </button>
               )}
             </div>
-            <div style={{
-              height: "280px", overflowY: "auto",
-              background: "#0d1a12", border: `1px solid ${result ? "#14532d44" : "#1f2937"}`,
-              borderRadius: "12px", padding: "16px",
-              fontSize: "14px", lineHeight: "1.7", color: result ? "#d1fae5" : "#374151",
-              whiteSpace: "pre-wrap", transition: "border-color 0.3s",
-            }}>
+            <div style={{ height: "280px", overflowY: "auto", background: "#0d1a12", border: `1px solid ${result ? "#14532d44" : "#1f2937"}`, borderRadius: "12px", padding: "16px", fontSize: "14px", lineHeight: "1.7", color: result ? "#d1fae5" : "#374151", whiteSpace: "pre-wrap" }}>
               {loading ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", paddingTop: "8px" }}>
                   {["90%", "75%", "85%", "60%"].map((w, i) => (
-                    <div key={i} style={{ height: "14px", background: "#1f2937", borderRadius: "4px", width: w, animation: "pulse 1.5s ease infinite", animationDelay: `${i * 0.1}s` }} />
+                    <div key={i} style={{ height: "14px", background: "#1f2937", borderRadius: "4px", width: w, animation: `pulse 1.5s ease infinite`, animationDelay: `${i * 0.15}s` }} />
                   ))}
-                  <style>{`@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }`}</style>
                 </div>
-              ) : result ? result.humanized : (
-                <span style={{ fontStyle: "italic", fontSize: "13px" }}>Your humanized text will appear here...</span>
-              )}
+              ) : result ? result.humanized : <span style={{ fontStyle: "italic", fontSize: "13px" }}>Your humanized text will appear here...</span>}
             </div>
             <div style={{ marginTop: "10px", fontSize: "11px", color: "#374151", fontFamily: "'DM Mono', monospace", textAlign: "right" }}>
               {result && `${result.humanized.trim().split(/\s+/).filter(Boolean).length} words`}
@@ -471,11 +343,9 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
           </div>
         )}
 
-        {/* Results bottom section */}
+        {/* Results */}
         {result && (
           <div className="fade-in" style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-
-            {/* Score */}
             <div className="card" style={{ padding: "20px 28px", display: "flex", gap: "40px", alignItems: "center", justifyContent: "center", flex: "1", minWidth: "280px" }}>
               <AIScore score={result.score_before} label="Before" />
               <div style={{ textAlign: "center" }}>
@@ -484,8 +354,6 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
               </div>
               <AIScore score={result.score_after} label="After" />
             </div>
-
-            {/* Changes */}
             <div className="card" style={{ padding: "20px", flex: "2", minWidth: "280px" }}>
               <div style={{ fontSize: "10px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#4b5563", fontFamily: "'DM Mono', monospace", marginBottom: "12px" }}>What changed</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
@@ -500,33 +368,21 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
           </div>
         )}
 
-        {/* Free user CTA banner */}
-        {!isSignedIn && (
-          <div style={{
-            marginTop: "40px", background: "#7c3aed12",
-            border: "1px solid #7c3aed33", borderRadius: "12px",
-            padding: "20px 24px", display: "flex",
-            alignItems: "center", justifyContent: "space-between",
-            flexWrap: "wrap", gap: "12px",
-          }}>
+        {/* CTA banner */}
+        <SignedOut>
+          <div style={{ marginTop: "40px", background: "#7c3aed12", border: "1px solid #7c3aed33", borderRadius: "12px", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
             <div>
               <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "4px" }}>Get 20 free uses per day</div>
-              <div style={{ fontSize: "13px", color: "#9ca3af" }}>Sign up free — no credit card, no paywall. Just more humanizations.</div>
+              <div style={{ fontSize: "13px", color: "#9ca3af" }}>Sign up free — no credit card, no paywall.</div>
             </div>
-            <button onClick={() => openSignUp()} style={{
-              background: "#7c3aed", border: "none", borderRadius: "8px",
-              padding: "10px 22px", color: "#fff", fontSize: "14px",
-              fontWeight: "600", cursor: "pointer",
-              fontFamily: "'DM Sans', system-ui",
-            }}>
+            <button onClick={() => openSignUp()} style={{ background: "#7c3aed", border: "none", borderRadius: "8px", padding: "10px 22px", color: "#fff", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>
               Create Free Account →
             </button>
           </div>
-        )}
-
+        </SignedOut>
       </div>
 
-      {/* Signup popup */}
+      {/* Popup */}
       {showPopup && (
         <SignupPopup
           onClose={() => setShowPopup(false)}
