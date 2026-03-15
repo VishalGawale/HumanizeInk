@@ -29,23 +29,34 @@ function incrementUsage() {
 
 // ─── AI SCORE ─────────────────────────────────────────────
 const AIScore = ({ score, label }) => {
-  const color = score < 25 ? "#4ade80" : score < 50 ? "#facc15" : score < 75 ? "#fb923c" : "#f87171";
+  // Before = red (bad), After = green (good)
+  const isBefore = label === "Before";
+  const color = isBefore ? "#f87171" : "#4ade80";
   const blocks = Math.round(score / 10);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
       <div style={{ fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>{label}</div>
-      <div style={{ display: "flex", gap: "3px" }}>
+
+      {/* Vertical bar chart */}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: "3px", height: "60px" }}>
         {Array.from({ length: 10 }).map((_, i) => (
           <div key={i} style={{
-            width: "16px", height: "16px", borderRadius: "3px",
+            width: "14px",
+            height: `${(i + 1) * 6}px`,
+            borderRadius: "2px 2px 0 0",
             background: i < blocks ? color : "#1f2937",
-            transition: "background 0.4s ease",
             border: i < blocks ? `1px solid ${color}44` : "1px solid #374151",
+            transition: "background 0.4s ease",
           }} />
         ))}
       </div>
-      <div style={{ fontSize: "20px", fontWeight: "700", color, fontFamily: "'DM Mono', monospace", lineHeight: 1 }}>
+
+      <div style={{ fontSize: "22px", fontWeight: "700", color, fontFamily: "'DM Mono', monospace", lineHeight: 1 }}>
         {score}<span style={{ fontSize: "12px", color: "#6b7280" }}>/100</span>
+      </div>
+      <div style={{ fontSize: "10px", color: isBefore ? "#f8717188" : "#4ade8088", fontFamily: "'DM Mono', monospace" }}>
+        {isBefore ? "AI detected" : "looks human"}
       </div>
     </div>
   );
@@ -325,11 +336,14 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
         {/* Results */}
         {result && (
           <div className="fade-in" style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-            <div className="card" style={{ padding: "20px 28px", display: "flex", gap: "40px", alignItems: "center", justifyContent: "center", flex: "1", minWidth: "280px" }}>
+            <div className="card" style={{ padding: "24px 28px", display: "flex", gap: "20px", alignItems: "center", justifyContent: "center", flex: "1", minWidth: "280px" }}>
               <AIScore score={result.score_before} label="Before" />
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "20px", color: "#4b5563" }}>→</div>
-                <div style={{ fontSize: "10px", color: "#374151", fontFamily: "'DM Mono', monospace" }}>AI score</div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                <div style={{ fontSize: "20px", color: "#4ade80" }}>↓</div>
+                <div style={{ fontSize: "9px", color: "#374151", fontFamily: "'DM Mono', monospace", textAlign: "center" }}>AI<br/>score</div>
+                <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: "700", fontFamily: "'DM Mono', monospace" }}>
+                  -{result.score_before - result.score_after}
+                </div>
               </div>
               <AIScore score={result.score_after} label="After" />
             </div>
