@@ -5,7 +5,7 @@ import {
   SignedIn,
   SignedOut,
   UserButton,
-} from "@clerk/clerk-react";
+} from "@clerk/react";
 
 // ─── LIMITS ───────────────────────────────────────────────
 const GUEST_LIMIT = 3;       // per day, no account
