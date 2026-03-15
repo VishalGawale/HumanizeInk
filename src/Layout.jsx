@@ -129,56 +129,63 @@ export const Navbar = ({ user, lang, setLang, usedToday, limit, onSignIn, onSign
       position: "relative", zIndex: 10,
       borderBottom: "1px solid #1f2937",
       background: "#0a0a0fcc", backdropFilter: "blur(10px)",
-      padding: "0 24px",
+      padding: "0 16px",
     }}>
       <style>{`
         .nav-link { color: #6b7280; text-decoration: none; font-size: 13px; transition: color 0.2s; }
         .nav-link:hover { color: #a78bfa; }
         .nav-link.active { color: #a78bfa; }
+        @media (max-width: 600px) {
+          .nav-page-links { display: none !important; }
+          .nav-auth-buttons { display: none !important; }
+          .nav-badge-text { display: none !important; }
+          .nav-badge { padding: 5px 8px !important; }
+        }
       `}</style>
-      <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "60px" }}>
+      <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "56px", gap: "8px" }}>
 
         {/* Logo */}
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
-          <div style={{ width: "28px", height: "28px", borderRadius: "7px", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>✍</div>
-          <span style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "-0.02em", color: "#e5e7eb" }}>humanizer<span style={{ color: "#7c3aed" }}>.ink</span></span>
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none", flexShrink: 0 }}>
+          <div style={{ width: "26px", height: "26px", borderRadius: "7px", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px" }}>✍</div>
+          <span style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "-0.02em", color: "#e5e7eb" }}>humanizer<span style={{ color: "#7c3aed" }}>.ink</span></span>
         </Link>
 
-        {/* Nav links */}
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        {/* Nav links — hidden on mobile */}
+        <div className="nav-page-links" style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <Link to="/about" className={`nav-link ${location.pathname === "/about" ? "active" : ""}`}>About</Link>
           <Link to="/contact" className={`nav-link ${location.pathname === "/contact" ? "active" : ""}`}>Contact</Link>
         </div>
 
         {/* Right side */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {/* Usage badge */}
-          <div style={{
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+
+          {/* Usage badge — dot only on mobile */}
+          <div className="nav-badge" style={{
             display: "flex", alignItems: "center", gap: "6px",
             background: isLow ? "#1f0a0a" : "#0f1117",
             border: `1px solid ${isLow ? "#7f1d1d" : "#1f2937"}`,
-            borderRadius: "20px", padding: "5px 12px",
-            fontSize: "12px", fontFamily: "'DM Mono', monospace",
+            borderRadius: "20px", padding: "5px 10px",
+            fontSize: "11px", fontFamily: "'DM Mono', monospace",
           }}>
-            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: isLow ? "#f87171" : "#4ade80", boxShadow: isLow ? "0 0 6px #f87171" : "0 0 6px #4ade80" }} />
-            <span style={{ color: isLow ? "#fca5a5" : "#9ca3af" }}>
-              {remaining <= 0 ? "No uses left" : `${remaining} left today`}
+            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: isLow ? "#f87171" : "#4ade80", boxShadow: isLow ? "0 0 6px #f87171" : "0 0 6px #4ade80", flexShrink: 0 }} />
+            <span className="nav-badge-text" style={{ color: isLow ? "#fca5a5" : "#9ca3af", whiteSpace: "nowrap" }}>
+              {remaining <= 0 ? "No uses left" : `${remaining} left`}
             </span>
           </div>
 
           <LanguageSelector lang={lang} setLang={setLang} />
 
           {user ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "12px", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>{user.email?.split("@")[0]}</span>
-              <button onClick={async () => await supabase.auth.signOut()} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "6px 12px", color: "#6b7280", fontSize: "12px", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>
-                Sign out
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "11px", color: "#6b7280", fontFamily: "'DM Mono', monospace", maxWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email?.split("@")[0]}</span>
+              <button onClick={async () => await supabase.auth.signOut()} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "5px 10px", color: "#6b7280", fontSize: "11px", cursor: "pointer", fontFamily: "'DM Sans', system-ui", whiteSpace: "nowrap" }}>
+                Out
               </button>
             </div>
           ) : (
             <>
-              <button onClick={onSignIn} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "7px 14px", color: "#9ca3af", fontSize: "13px", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign in</button>
-              <button onClick={onSignUp} style={{ background: "#7c3aed", border: "none", borderRadius: "7px", padding: "7px 14px", color: "#fff", fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign up free</button>
+              <button className="nav-auth-buttons" onClick={onSignIn} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "6px 12px", color: "#9ca3af", fontSize: "12px", cursor: "pointer", fontFamily: "'DM Sans', system-ui", whiteSpace: "nowrap" }}>Sign in</button>
+              <button onClick={onSignUp} style={{ background: "#7c3aed", border: "none", borderRadius: "7px", padding: "6px 12px", color: "#fff", fontSize: "12px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui", whiteSpace: "nowrap" }}>Sign up</button>
             </>
           )}
         </div>
