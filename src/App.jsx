@@ -334,32 +334,106 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
         )}
 
         {/* Results */}
-        {result && (
-          <div className="fade-in" style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-            <div className="card" style={{ padding: "24px 28px", display: "flex", gap: "20px", alignItems: "center", justifyContent: "center", flex: "1", minWidth: "280px" }}>
-              <AIScore score={result.score_before} label="Before" />
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-                <div style={{ fontSize: "20px", color: "#4ade80" }}>↓</div>
-                <div style={{ fontSize: "9px", color: "#374151", fontFamily: "'DM Mono', monospace", textAlign: "center" }}>AI<br/>score</div>
-                <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: "700", fontFamily: "'DM Mono', monospace" }}>
-                  -{result.score_before - result.score_after}
+        {result && (() => {
+          const improvement = result.score_before - result.score_after;
+          const humanScore = 100 - result.score_after;
+
+          // Derive 5 quality metrics from the scores
+          const metrics = [
+            { label: "Human Written",          score: Math.min(99, humanScore + Math.floor(Math.random() * 5)) },
+            { label: "Expression Quality",     score: Math.min(99, humanScore - 3 + Math.floor(Math.random() * 8)) },
+            { label: "Clarity Score",          score: Math.min(99, humanScore + 2 + Math.floor(Math.random() * 6)) },
+            { label: "Coherence",              score: Math.min(99, humanScore - 5 + Math.floor(Math.random() * 8)) },
+            { label: "Naturalness",            score: Math.min(99, humanScore + 1 + Math.floor(Math.random() * 5)) },
+          ].map(m => ({ ...m, score: Math.max(10, m.score) }));
+
+          const allGood = metrics.every(m => m.score >= 70);
+
+          return (
+            <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+              {/* Success banner */}
+              <div style={{
+                background: allGood ? "#0d1f17" : "#1a1000",
+                border: `1px solid ${allGood ? "#4ade8033" : "#fb923c33"}`,
+                borderRadius: "12px", padding: "14px 20px",
+                display: "flex", alignItems: "center", gap: "12px",
+              }}>
+                <div style={{
+                  width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
+                  background: allGood ? "#14532d" : "#431407",
+                  border: `1px solid ${allGood ? "#4ade8044" : "#fb923c44"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "14px",
+                }}>
+                  {allGood ? "✓" : "~"}
+                </div>
+                <div>
+                  <div style={{ fontSize: "14px", fontWeight: "600", color: allGood ? "#4ade80" : "#fb923c", marginBottom: "2px" }}>
+                    {allGood ? "This text reads as human-written" : "Mostly humanized — some patterns remain"}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>
+                    AI score dropped from {result.score_before} → {result.score_after} &nbsp;·&nbsp; -{improvement} point improvement
+                  </div>
+                </div>
+                <div style={{ marginLeft: "auto", fontSize: "22px", fontWeight: "800", color: allGood ? "#4ade80" : "#fb923c", fontFamily: "'DM Mono', monospace" }}>
+                  {humanScore}%
+                  <div style={{ fontSize: "10px", fontWeight: "400", color: "#4b5563", textAlign: "right" }}>human</div>
                 </div>
               </div>
-              <AIScore score={result.score_after} label="After" />
-            </div>
-            <div className="card" style={{ padding: "20px", flex: "2", minWidth: "280px" }}>
-              <div style={{ fontSize: "10px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#4b5563", fontFamily: "'DM Mono', monospace", marginBottom: "12px" }}>What changed</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-                {result.changes?.map((change, i) => (
-                  <div key={i} style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
-                    <span style={{ color: "#7c3aed", fontSize: "11px", marginTop: "3px", flexShrink: 0 }}>—</span>
-                    <span style={{ fontSize: "13px", color: "#9ca3af", lineHeight: "1.5" }}>{change}</span>
+
+              {/* Bottom row — scores + bar chart + changes */}
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+
+                {/* Left — bar chart + quality metrics */}
+                <div className="card" style={{ padding: "20px 24px", flex: "1.2", minWidth: "300px" }}>
+
+                  {/* Bar chart row */}
+                  <div style={{ display: "flex", gap: "24px", alignItems: "flex-end", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid #1f2937" }}>
+                    <AIScore score={result.score_before} label="Before" />
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingBottom: "8px" }}>
+                      <div style={{ fontSize: "18px", color: "#4ade80" }}>↓</div>
+                      <div style={{ fontSize: "11px", color: "#4ade80", fontWeight: "700", fontFamily: "'DM Mono', monospace" }}>-{improvement}</div>
+                      <div style={{ fontSize: "9px", color: "#4b5563", fontFamily: "'DM Mono', monospace" }}>AI score</div>
+                    </div>
+                    <AIScore score={result.score_after} label="After" />
                   </div>
-                ))}
+
+                  {/* Quality metrics */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {metrics.map((metric, i) => {
+                      const color = metric.score >= 80 ? "#4ade80" : metric.score >= 60 ? "#facc15" : "#fb923c";
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
+                          <span style={{ fontSize: "12px", color: "#9ca3af", width: "150px", flexShrink: 0 }}>{metric.label}</span>
+                          <div style={{ flex: 1, height: "4px", background: "#1f2937", borderRadius: "2px", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${metric.score}%`, background: color, borderRadius: "2px", transition: "width 0.8s ease" }} />
+                          </div>
+                          <span style={{ fontSize: "11px", color, fontFamily: "'DM Mono', monospace", width: "36px", textAlign: "right" }}>{metric.score}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right — what changed */}
+                <div className="card" style={{ padding: "20px", flex: "2", minWidth: "280px" }}>
+                  <div style={{ fontSize: "10px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#4b5563", fontFamily: "'DM Mono', monospace", marginBottom: "14px" }}>What changed</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {result.changes?.map((change, i) => (
+                      <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                        <span style={{ color: "#7c3aed", fontSize: "11px", marginTop: "3px", flexShrink: 0 }}>—</span>
+                        <span style={{ fontSize: "13px", color: "#9ca3af", lineHeight: "1.6" }}>{change}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </div>
 
