@@ -349,6 +349,32 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
 
       </div>
 
+      {/* Footer */}
+      <footer style={{
+        position: "relative", zIndex: 1,
+        borderTop: "1px solid #1f2937",
+        padding: "24px",
+        textAlign: "center",
+      }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ width: "20px", height: "20px", borderRadius: "5px", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px" }}>✍</div>
+            <span style={{ fontSize: "13px", fontWeight: "600" }}>humanizer<span style={{ color: "#7c3aed" }}>.ink</span></span>
+          </div>
+          <div style={{ fontSize: "12px", color: "#4b5563", fontFamily: "'DM Mono', monospace" }}>
+            © {new Date().getFullYear()} humanizer.ink — All rights reserved
+          </div>
+          <div style={{ display: "flex", gap: "20px" }}>
+            {["Privacy Policy", "Terms of Use", "Contact"].map((link) => (
+              <a key={link} href="#" style={{ fontSize: "12px", color: "#4b5563", textDecoration: "none", fontFamily: "'DM Mono', monospace", transition: "color 0.2s" }}
+                onMouseOver={e => e.target.style.color = "#a78bfa"}
+                onMouseOut={e => e.target.style.color = "#4b5563"}
+              >{link}</a>
+            ))}
+          </div>
+        </div>
+      </footer>
+
       {/* Popup */}
       {showPopup && <SignupPopup onClose={() => setShowPopup(false)} />}
     </div>

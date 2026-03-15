@@ -39,9 +39,16 @@ Rules:
 3. Add personality where natural.
 4. Use specific details over vague claims.
 
+IMPORTANT SCORING RULES:
+- score_before = how AI-sounding the ORIGINAL text is (0=human, 100=pure AI)
+- score_after = how AI-sounding the REWRITTEN text is (0=human, 100=pure AI)
+- score_after MUST ALWAYS be lower than score_before
+- A good humanization reduces score by at least 30-50 points
+- Example: if original scores 80, rewrite should score 20-40
+
 Respond with ONLY raw JSON. No markdown. No backticks. Start with { end with }
 
-{"humanized":"rewritten text","changes":["change 1","change 2","change 3"],"score_before":82,"score_after":15}`;
+{"humanized":"rewritten text","changes":["change 1","change 2","change 3"],"score_before":82,"score_after":25}`;
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -90,12 +97,28 @@ Respond with ONLY raw JSON. No markdown. No backticks. Start with { end with }
       return res.status(500).json({ error: "Invalid response. Try again." });
     }
 
+    // ── SCORE VALIDATION FIX ──────────────────────────────
+    let scoreBefore = Math.min(100, Math.max(0, parsed.score_before || 75));
+    let scoreAfter = Math.min(100, Math.max(0, parsed.score_after || 20));
+
+    // After score must always be lower than before
+    if (scoreAfter >= scoreBefore) {
+      scoreAfter = Math.max(5, scoreBefore - 30);
+    }
+
+    // Minimum 15 point improvement
+    if (scoreBefore - scoreAfter < 15) {
+      scoreAfter = Math.max(5, scoreBefore - 15);
+    }
+    // ─────────────────────────────────────────────────────
+
     return res.status(200).json({
       humanized: parsed.humanized,
       changes: parsed.changes || ["Removed AI patterns", "Improved readability"],
-      score_before: parsed.score_before || 75,
-      score_after: parsed.score_after || 20,
+      score_before: scoreBefore,
+      score_after: scoreAfter,
     });
+
   } catch (error) {
     console.error("Server error:", error);
     return res.status(500).json({ error: "Something went wrong. Please try again." });
