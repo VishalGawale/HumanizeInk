@@ -1,5 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
+import { Routes, Route } from "react-router-dom";
 import { supabase } from "./supabase.js";
+import { Navbar, Footer, CookieBanner, FAQ } from "./Layout.jsx";
+import About from "./pages/About.jsx";
+import Contact from "./pages/Contact.jsx";
+import Privacy from "./pages/Privacy.jsx";
+import Terms from "./pages/Terms.jsx";
 
 // ─── LIMITS ───────────────────────────────────────────────
 const GUEST_LIMIT = 3;
@@ -271,6 +277,9 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [usage, setUsage] = useState(() => getUsage(null));
   const [mode, setMode] = useState("standard");
+  const [lang, setLang] = useState(() => localStorage.getItem("hum_lang") || "en");
+
+  useEffect(() => { localStorage.setItem("hum_lang", lang); }, [lang]);
 
   // Listen for auth changes
   useEffect(() => {
@@ -346,7 +355,7 @@ The benefits are clear: enhanced productivity, fostering collaboration, and cult
 
 In conclusion, the future looks bright for remote work. Exciting times lie ahead as organizations continue their journey toward excellence.`;
 
-  return (
+  const HomeContent = (
     <div style={{ minHeight: "100vh", background: "#0a0a0f", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#e5e7eb", position: "relative", overflow: "hidden" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
@@ -368,32 +377,8 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
 
       <div className="grid-bg" />
       <div className="glow" />
-
       {/* NAVBAR */}
-      <nav style={{ position: "relative", zIndex: 10, borderBottom: "1px solid #1f2937", background: "#0a0a0fcc", backdropFilter: "blur(10px)", padding: "0 24px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "60px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: "28px", height: "28px", borderRadius: "7px", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>✍</div>
-            <span style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "-0.02em" }}>humanizer<span style={{ color: "#7c3aed" }}>.ink</span></span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <UsageBadge used={usedToday} limit={limit} />
-            {user ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "13px", color: "#6b7280", fontFamily: "'DM Mono', monospace" }}>{user.email?.split("@")[0]}</span>
-                <button onClick={handleSignOut} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "6px 12px", color: "#6b7280", fontSize: "12px", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>
-                  Sign out
-                </button>
-              </div>
-            ) : (
-              <>
-                <button onClick={() => setShowAuthModal(true)} style={{ background: "transparent", border: "1px solid #374151", borderRadius: "7px", padding: "7px 14px", color: "#9ca3af", fontSize: "13px", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign in</button>
-                <button onClick={() => setShowAuthModal(true)} style={{ background: "#7c3aed", border: "none", borderRadius: "7px", padding: "7px 14px", color: "#fff", fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans', system-ui" }}>Sign up free</button>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+      <Navbar user={user} lang={lang} setLang={setLang} usedToday={usedToday} limit={limit} onSignIn={() => setShowAuthModal(true)} onSignUp={() => setShowAuthModal(true)} />
 
       {/* MAIN */}
       <div style={{ position: "relative", zIndex: 1, maxWidth: "1100px", margin: "0 auto", padding: "40px 24px 80px" }}>
@@ -413,7 +398,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
         </div>
 
         {/* Mode selector */}
-        <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginBottom: "24px" }}>
+        <div className="mode-selector" style={{ display: "flex", justifyContent: "center", gap: "8px", marginBottom: "24px", flexWrap: "wrap" }}>
           {[{ id: "fast", label: "Fast", desc: "Light touch" }, { id: "standard", label: "Standard", desc: "Balanced" }, { id: "enhanced", label: "Enhanced", desc: "Deep rewrite" }].map((m) => (
             <button key={m.id} className="mode-btn" onClick={() => setMode(m.id)} style={{
               background: mode === m.id ? "#7c3aed15" : "transparent",
@@ -524,7 +509,7 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
 
               <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                 {/* Score + metrics */}
-                <div className="card" style={{ padding: "20px 24px", flex: "1.2", minWidth: "300px" }}>
+                <div className="card score-card" style={{ padding: "20px 24px", flex: "1.2", minWidth: "260px" }}>
                   <div style={{ display: "flex", gap: "24px", alignItems: "flex-end", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid #1f2937" }}>
                     <AIScore score={result.score_before} label="Before" />
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingBottom: "8px" }}>
@@ -580,28 +565,13 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
             </button>
           </div>
         )}
-      </div>
 
+        {/* FAQ Section */}
+        <FAQ />
+
+      </div>
       {/* Footer */}
-      <footer style={{ position: "relative", zIndex: 1, borderTop: "1px solid #1f2937", padding: "24px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: "20px", height: "20px", borderRadius: "5px", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px" }}>✍</div>
-            <span style={{ fontSize: "13px", fontWeight: "600" }}>humanizer<span style={{ color: "#7c3aed" }}>.ink</span></span>
-          </div>
-          <div style={{ fontSize: "12px", color: "#4b5563", fontFamily: "'DM Mono', monospace" }}>
-            © {new Date().getFullYear()} humanizer.ink — All rights reserved
-          </div>
-          <div style={{ display: "flex", gap: "20px" }}>
-            {["Privacy Policy", "Terms of Use", "Contact"].map((link) => (
-              <a key={link} href="#" style={{ fontSize: "12px", color: "#4b5563", textDecoration: "none", fontFamily: "'DM Mono', monospace" }}
-                onMouseOver={e => e.target.style.color = "#a78bfa"}
-                onMouseOut={e => e.target.style.color = "#4b5563"}
-              >{link}</a>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       {/* Modals */}
       {showLimitPopup && (
@@ -616,6 +586,17 @@ In conclusion, the future looks bright for remote work. Exciting times lie ahead
           onSuccess={() => setShowAuthModal(false)}
         />
       )}
+      <CookieBanner />
     </div>
+  );
+
+  return (
+    <Routes>
+      <Route path="/" element={HomeContent} />
+      <Route path="/about" element={<><Navbar user={user} lang={lang} setLang={setLang} usedToday={usedToday} limit={limit} onSignIn={() => setShowAuthModal(true)} onSignUp={() => setShowAuthModal(true)} /><div style={{minHeight:"100vh",background:"#0a0a0f",color:"#e5e7eb",fontFamily:"'DM Sans',system-ui"}}><div className="grid-bg"/><div className="glow"/><About /></div><Footer /></>} />
+      <Route path="/contact" element={<><Navbar user={user} lang={lang} setLang={setLang} usedToday={usedToday} limit={limit} onSignIn={() => setShowAuthModal(true)} onSignUp={() => setShowAuthModal(true)} /><div style={{minHeight:"100vh",background:"#0a0a0f",color:"#e5e7eb",fontFamily:"'DM Sans',system-ui"}}><div className="grid-bg"/><div className="glow"/><Contact /></div><Footer /></>} />
+      <Route path="/privacy" element={<><Navbar user={user} lang={lang} setLang={setLang} usedToday={usedToday} limit={limit} onSignIn={() => setShowAuthModal(true)} onSignUp={() => setShowAuthModal(true)} /><div style={{minHeight:"100vh",background:"#0a0a0f",color:"#e5e7eb",fontFamily:"'DM Sans',system-ui"}}><div className="grid-bg"/><div className="glow"/><Privacy /></div><Footer /></>} />
+      <Route path="/terms" element={<><Navbar user={user} lang={lang} setLang={setLang} usedToday={usedToday} limit={limit} onSignIn={() => setShowAuthModal(true)} onSignUp={() => setShowAuthModal(true)} /><div style={{minHeight:"100vh",background:"#0a0a0f",color:"#e5e7eb",fontFamily:"'DM Sans',system-ui"}}><div className="grid-bg"/><div className="glow"/><Terms /></div><Footer /></>} />
+    </Routes>
   );
 }
